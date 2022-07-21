@@ -23,6 +23,8 @@ import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
 
+import com.alibaba.fastjson.JSON;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -44,8 +46,6 @@ public class MyNotificationListenerService extends NotificationListenerService {
     Handler mHandler = new Handler(Looper.getMainLooper()) {
         @Override
         public void handleMessage(Message msg) {
-//            String msgString = (String) msg.obj;
-//            Toast.makeText(getApplicationContext(), msgString, Toast.LENGTH_LONG).show();
         }
     };
 
@@ -53,9 +53,9 @@ public class MyNotificationListenerService extends NotificationListenerService {
     public void onCreate() {
         super.onCreate();
         //获取服务通知
-//        Notification notification = createForegroundNotification();
+        Notification notification = createForegroundNotification();
         //将服务设置与启动状态
-//        startForeground(28374, notification);
+        startForeground(28374, notification);
     }
 
     @Override
@@ -92,13 +92,44 @@ public class MyNotificationListenerService extends NotificationListenerService {
                 Message message = handler.obtainMessage();
                 message.what = 1;
                 handler.sendMessage(message);
-                getNotifyData(sbn);
+                sendPushMsg(sbn);
             }
         } catch (Exception e) {
             e.printStackTrace();
             Toast.makeText(MyNotificationListenerService.this, "发生异常:" + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
 
+    }
+
+    private void sendPushMsg(StatusBarNotification sbn) {
+        try {
+            Bundle extras = sbn.getNotification().extras;
+            String content;
+            String title = extras.getString(Notification.EXTRA_TITLE,""); //通知标题
+            content = extras.getString(Notification.EXTRA_TEXT,"");//通知内容
+            Object username = new SpUtil(getApplicationContext(), "config").getSharedPreference("userName", "");
+
+            new Thread(() -> {
+                try {
+                    Map<String,Object> param = new HashMap<>();
+                    param.put("title",username.toString());
+                    param.put("userName","email");
+                    param.put("message", content);
+                    OkHttpUtils.sendPost(Helper.webSocketBaseUrl + "/api/notification/push",
+                            JSON.toJSONString(param),
+                            new HashMap<>(),
+                            new HashMap<>());
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+                    Date date = new Date();
+                    Log.i("okHttp","时间:" + sdf.format(date) +",通知发送成功,内容是:"+content);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    Log.e("okhttp","通知转发失败:" + e.getMessage());
+                }
+            }).start();
+        }catch (Exception e){
+            e.printStackTrace();
+        }
     }
 
     private void getNotifyData(StatusBarNotification sbn){
