@@ -11,6 +11,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <!--  短信权限  -->
     <uses-permission android:name="android.permission.READ_SMS"/>
+    <uses-permission android:name="android.permission.RECEIVE_SMS"/>
     <application
         android:allowBackup="true"
         android:icon="@drawable/icon"
@@ -20,6 +21,13 @@
         android:theme="@style/Theme.ForwardingiPhone"
         android:networkSecurityConfig="@xml/network_config"
         android:requestLegacyExternalStorage="true">
+        <!-- action:name = 的名称是固定的 -->
+        <receiver android:name=".NoteReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.SMS_RECEIVED"/>
+            </intent-filter>
+        </receiver>
         <activity
             android:name=".MainActivity"
             android:exported="true">

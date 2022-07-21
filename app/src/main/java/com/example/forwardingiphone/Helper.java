@@ -94,4 +94,6 @@ public class Helper {
     public static String serverIp = "81.68.206.166";
 
     public static String webSocketBaseUrl = "http://"+ serverIp +":9003/dashboard";
+
+
 }

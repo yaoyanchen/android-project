@@ -9,13 +9,18 @@ import android.app.job.JobScheduler;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.database.ContentObserver;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.PowerManager;
 import android.provider.Settings;
 import android.telephony.SmsMessage;
@@ -39,17 +44,10 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
-
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.WebSocket;
 
 public class MainActivity extends AppCompatActivity {
 
     public String receiverMsg;
-    SmsReceiver receiver;
-    IntentFilter filter;
     class GetOnlineUserSpinnerListener implements AdapterView.OnItemSelectedListener {
 
         @Override
@@ -114,11 +112,6 @@ public class MainActivity extends AppCompatActivity {
         urlEditText = findViewById(R.id.editTextTextPersonName);
         userNameEditText = findViewById(R.id.editTextTextPersonName2);
         sendContentEditText = findViewById(R.id.editTextTextPersonName4);
-        filter=new IntentFilter();
-        filter.addAction("android.provider.Telephony.SMS_RECEIVED" );
-        receiver=new SmsReceiver();
-        registerReceiver(receiver,filter);//注册广播接收器
-
         button10.setOnClickListener(v -> {
 //            Intent intent = new Intent(MainActivity.this, MyNotificationListenerService.class);//启动服务
 //            startService(intent);
@@ -323,7 +316,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        unregisterReceiver(receiver);
     }
 
     private static final int CHOOSE_FILE_CODE = 0;
@@ -359,44 +351,5 @@ public class MainActivity extends AppCompatActivity {
             Log.e(TAG1, "onActivityResult() error, resultCode: " + resultCode);
         }
         super.onActivityResult(requestCode, resultCode, data);
-    }
-
-    public class SmsReceiver extends BroadcastReceiver {
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-
-            StringBuilder content = new StringBuilder();//用于存储短信内容
-            String sender = null;//存储短信发送方手机号
-            Bundle bundle = intent.getExtras();//通过getExtras()方法获取短信内容
-            String format = intent.getStringExtra("format");
-            if (bundle != null) {
-                Object[] pdus = (Object[]) bundle.get("pdus");//根据pdus关键字获取短信字节数组，数组内的每个元素都是一条短信
-                for (Object object : pdus) {
-                    SmsMessage message = SmsMessage.createFromPdu((byte[]) object, format);//将字节数组转化为Message对象
-                    sender = message.getOriginatingAddress();//获取短信手机号
-                    content.append(message.getMessageBody());//获取短信内容
-                }
-            }
-            Object username = new SpUtil(getApplicationContext(), "config").getSharedPreference("userName", "");
-
-            new Thread(() -> {
-                Map<String,Object> param = new HashMap<>();
-                param.put("title",username.toString());
-                param.put("userName","email");
-                param.put("message", content);
-                try {
-                    OkHttpUtils.sendPost(Helper.webSocketBaseUrl + "/api/notification/push",
-                            JSON.toJSONString(param),
-                            new HashMap<>(),
-                            new HashMap<>());
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
-                Date date = new Date();
-                Log.i("okHttp","时间:" + sdf.format(date) +",通知发送成功,内容是:"+content);
-            }).start();
-        }
     }
 }
