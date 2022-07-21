@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">安卓转发IOS</string>
+    <string name="text1">用户名</string>
+    <string name="text2">接收用户</string>
+</resources>
