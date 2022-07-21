@@ -12,6 +12,7 @@ import com.example.forwardingiphone.Helper;
 import com.example.forwardingiphone.QlNotificationUtil;
 import com.example.forwardingiphone.SpUtil;
 
+import org.java_websocket.enums.ReadyState;
 import org.java_websocket.handshake.ServerHandshake;
 
 import java.net.URI;
@@ -99,7 +100,15 @@ public class JWebSocketClientService extends Service {
                     reconnectWs();
                 }else {
                     //业务逻辑 这里如果服务端需要心跳包为了防止断开 需要不断发送消息给服务端
-                     client.send("");
+                    try {
+                        while (!client.getReadyState().equals(ReadyState.OPEN)) {
+                            Log.e(TAG,"连接中···请稍后");
+                        }
+                        client.send("");
+                    }catch (Exception e) {
+                        Log.e(TAG, "心跳包发送失败:" + e.getMessage());
+                        e.printStackTrace();
+                    }
                 }
             } else {
                 //如果client已为空，重新初始化连接

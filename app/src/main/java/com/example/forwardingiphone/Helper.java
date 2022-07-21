@@ -91,7 +91,7 @@ public class Helper {
         Toast.makeText(context, content, Toast.LENGTH_SHORT).show();
     }
 
-    public static String serverIp = "81.68.206.166";
+    public static String serverIp = "192.168.124.13";
 
     public static String webSocketBaseUrl = "http://"+ serverIp +":9003/dashboard";
 

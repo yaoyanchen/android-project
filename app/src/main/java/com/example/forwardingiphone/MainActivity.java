@@ -48,6 +48,7 @@ import java.util.Map;
 public class MainActivity extends AppCompatActivity {
 
     public String receiverMsg;
+    private NoteReceiver noteReceiver;
     class GetOnlineUserSpinnerListener implements AdapterView.OnItemSelectedListener {
 
         @Override
@@ -59,6 +60,25 @@ public class MainActivity extends AppCompatActivity {
         public void onNothingSelected(AdapterView<?> adapterView) {
 
         }
+    }
+    private static final String ACTION = "android.provider.Telephony.SMS_RECEIVED";
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        noteReceiver = new NoteReceiver();
+        //实例化过滤器并设置要过滤的广播
+        IntentFilter intentFilter = new IntentFilter(ACTION);
+        intentFilter.setPriority(Integer.MAX_VALUE);
+        //注册广播
+        this.registerReceiver(noteReceiver, intentFilter);
+
+        noteReceiver.setOnReceivedMessageListener(new NoteReceiver.MessageListener() {
+            @Override
+            public void onReceived(String message) {
+                System.out.printf(message);
+            }
+        });
     }
 
     public void initSpinner(Context context) {
@@ -316,6 +336,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        this.unregisterReceiver(noteReceiver);
+
     }
 
     private static final int CHOOSE_FILE_CODE = 0;

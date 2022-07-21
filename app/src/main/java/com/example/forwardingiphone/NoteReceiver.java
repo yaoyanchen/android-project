@@ -5,44 +5,72 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.telephony.SmsMessage;
+import android.util.Log;
 import android.widget.Toast;
+
+import com.alibaba.fastjson.JSON;
+import com.example.forwardingiphone.model.SendMsg;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 public class NoteReceiver extends BroadcastReceiver {
-    private static final String SMS_RECEIVED_ACTION = "android.provider.Telephony.SMS_RECEIVED";
+    private static MessageListener mMessageListener;
+    private final String TAG = "NoteReceiver";
+    public static final String SMS_RECEIVED_ACTION = "android.provider.Telephony.SMS_RECEIVED";
+
+    public NoteReceiver() {
+        super();
+    }
+
     @Override
     public void onReceive(Context context, Intent intent) {
-        String action = intent.getAction();
-        //判断广播消息
-        if (action.equals(SMS_RECEIVED_ACTION)){
-            Bundle bundle = intent.getExtras();
-            //如果不为空
-            if (bundle != null){
-                //将pdus里面的内容转化成Object[]数组
-                Object pdusData[] = (Object[]) bundle.get("pdus");
-                //解析短信
-                SmsMessage[] msg = new SmsMessage[pdusData.length];
-                for (int i = 0 ;i < msg.length;i++){
-                    byte pdus[] = (byte[]) pdusData[i];
-                    msg[i] = SmsMessage.createFromPdu(pdus);
+        if (intent.getAction().equals(SMS_RECEIVED_ACTION)) {
+            Object[] pdus = (Object[]) intent.getExtras().get("pdus");
+            for(Object pdu:pdus) {
+                SmsMessage smsMessage = SmsMessage.createFromPdu((byte [])pdu);
+                String sender = smsMessage.getDisplayOriginatingAddress();
+                //短信内容
+                String content = smsMessage.getDisplayMessageBody();
+                long date = smsMessage.getTimestampMillis();
+                Date tiemDate = new Date(date);
+                SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                String time = simpleDateFormat.format(tiemDate);
+
+                //过滤不需要读取的短信的发送号码
+                if ("+8613450214963".equals(sender)) {
+                    mMessageListener.onReceived(content);
+                    abortBroadcast();
                 }
-                StringBuffer content = new StringBuffer();//获取短信内容
-                StringBuffer phoneNumber = new StringBuffer();//获取地址
-                StringBuffer receiveData = new StringBuffer();//获取时间
-                //分析短信具体参数
-                for (SmsMessage temp : msg){
-                    content.append(temp.getMessageBody());
-                    phoneNumber.append(temp.getOriginatingAddress());
-                    receiveData.append(new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSS")
-                            .format(new Date(temp.getTimestampMillis())));
-                }
-                /**
-                 * 这里还可以进行好多操作，比如我们根据手机号进行拦截（取消广播继续传播）等等
-                 */
-                Toast.makeText(context,phoneNumber.toString()+content+receiveData, Toast.LENGTH_LONG).show();//短信内容
+
+                new Thread(() -> {
+                    Object username = new SpUtil(context, "config").getSharedPreference("userName", "");
+
+                    SendMsg jsonParam = new SendMsg();
+                    jsonParam.setTitle(username.toString());
+                    String msg = "来自:" + sender + "的消息:" + content;
+                    jsonParam.setMessage(msg);
+                    jsonParam.setUserName("system");
+                    try {
+                        OkHttpUtils.sendPost(Helper.webSocketBaseUrl + "/api/notification/push", JSON.toJSONString(jsonParam), new HashMap<>(), new HashMap<>());
+                        Log.e(TAG, "短信消息推送成功...");
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }).start();
             }
         }
+
+    }
+
+    //回调接口
+    public interface MessageListener {
+        public void onReceived(String message);
+    }
+
+    public void setOnReceivedMessageListener(MessageListener messageListener) {
+        this.mMessageListener = messageListener;
     }
 }
